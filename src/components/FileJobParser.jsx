@@ -35,7 +35,7 @@ const FileJobParser = () => {
   return (
     <div style={{ padding: "2rem", maxWidth: "90rem", margin: "0 auto" }}>
       <h2 style={{ fontSize: "1.5rem", marginBottom: "1rem" }}>
-        Upload PDF Job Card
+        Upload Job Card
       </h2>
       <div
         /*drag and drop event */
@@ -114,38 +114,44 @@ const FileJobParser = () => {
                 >
                   <thead>
                     <tr style={{ backgroundColor: "#eaeaea" }}>
+                      <th style={th}>#</th>
                       <th style={th}>Item</th>
-                      <th style={th}>Sheet Width</th>
                       <th style={th}>Quantity</th>
+                      <th style={th}>Girth</th>
                       <th style={th}>Bends</th>
-                      <th style={th}>Total Length</th>
+                      <th style={th}>Total LM</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {jobsByMaterial.map((job, jIdx) =>
-                      job.quantities.map((q, qIdx) => {
-                        const lengthValue = parseFloat(q.length);
-                        const total =
-                          !isNaN(lengthValue) && !isNaN(q.count)
-                            ? lengthValue * q.count
-                            : 0;
+                    {(() => {
+                      let lineCounter = 1;
+                      return jobsByMaterial.flatMap((job, jIdx) =>
+                        job.quantities.map((q, qIdx) => {
+                          const lengthMM = parseFloat(q.length);
+                          const totalMM =
+                            !isNaN(lengthMM) && !isNaN(q.count)
+                              ? lengthMM * q.count
+                              : 0;
+                          const totalLM = totalMM / 1000;
 
-                        return (
-                          <tr
-                            key={`${jIdx}-${qIdx}`}
-                            style={{ borderBottom: "1px solid #ccc" }}
-                          >
-                            <td style={td}>{job.item}</td>
-                            <td style={td}>{job.sheetWidth}</td>
-                            <td style={td}>
-                              {q.count} x {q.length}
-                            </td>
-                            <td style={td}>{job.bends}</td>
-                            <td style={td}>{total.toLocaleString()} mm</td>
-                          </tr>
-                        );
-                      })
-                    )}
+                          return (
+                            <tr
+                              key={`${jIdx}-${qIdx}`}
+                              style={{ borderBottom: "1px solid #ccc" }}
+                            >
+                              <td style={td}>{lineCounter++}</td>
+                              <td style={td}>{job.item}</td>
+                              <td style={td}>
+                                {q.count} x {q.length}
+                              </td>
+                              <td style={td}>{job.sheetWidth}</td>
+                              <td style={td}>{job.bends}</td>
+                              <td style={td}>{totalLM.toFixed(2)} LM</td>
+                            </tr>
+                          );
+                        })
+                      );
+                    })()}
                   </tbody>
                 </table>
               </div>

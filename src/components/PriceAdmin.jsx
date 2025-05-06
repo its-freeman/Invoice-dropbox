@@ -1,8 +1,7 @@
 import React from "react";
-import FileJobParser from "./components/FileJobParser";
-import PriceEditor from "./components/PriceEditor";
+import PriceEditor from "./PriceEditor";
 
-function App() {
+const PriceAdmin = () => {
   return (
     <div
       style={{
@@ -12,14 +11,7 @@ function App() {
         margin: "0 auto",
       }}
     >
-      <h1 style={{ fontSize: "2.5rem", marginBottom: "2rem" }}>
-        PDF Job Parser Tool
-      </h1>
-
-      {/* Job Parser */}
-      <FileJobParser />
-
-      <hr style={{ margin: "4rem 0", borderColor: "#ccc" }} />
+      {/* Top-right Return Button */}
       <div
         style={{
           position: "absolute",
@@ -32,7 +24,7 @@ function App() {
         onMouseLeave={(e) => (e.currentTarget.style.opacity = 0.2)}
       >
         <a
-          href="/pricing"
+          href="/"
           style={{
             textDecoration: "none",
             background: "#333",
@@ -42,11 +34,17 @@ function App() {
             fontSize: "0.875rem",
           }}
         >
-          Pricing Admin
+          Back to Job Parser
         </a>
       </div>
+
+      {/* Heading + Editor */}
+      <h1 style={{ fontSize: "2rem", marginBottom: "2rem" }}>
+        Manage Pricing Lists
+      </h1>
+      <PriceEditor />
     </div>
   );
-}
+};
 
-export default App;
+export default PriceAdmin;
