@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from "react";
 import pricingMatrix from "../data/pricingMatrix";
+import {
+  spanGirthPricesToMax,
+  applyFoldMultipliers,
+} from "../utils/pricingTools";
 
 const PriceEditor = () => {
+  const [priceAt100, setPriceAt100] = useState("");
+  const [priceAt1200, setPriceAt1200] = useState("");
+  const [foldPrice, setFoldPrice] = useState("");
   const [selectedMaterial, setSelectedMaterial] = useState(
     Object.keys(pricingMatrix)[0]
   );
@@ -11,16 +18,48 @@ const PriceEditor = () => {
       ? JSON.parse(saved)
       : JSON.parse(JSON.stringify(pricingMatrix));
   });
-
-  useEffect(() => {
-    localStorage.setItem("pricingMatrix", JSON.stringify(localMatrix));
-  }, [localMatrix]);
-
+  const [foldChunkedView, setFoldChunkedView] = useState(() => {
+    const saved = localStorage.getItem("foldChunkedView");
+    return saved === null ? false : JSON.parse(saved);
+  });
   const [newMaterialName, setNewMaterialName] = useState("");
   const [chunkedView, setChunkedView] = useState(() => {
     const saved = localStorage.getItem("chunkedView");
     return saved === null ? true : JSON.parse(saved);
   });
+
+  useEffect(() => {
+    localStorage.setItem("pricingMatrix", JSON.stringify(localMatrix));
+  }, [localMatrix]);
+
+  const handleSpanPrices = () => {
+    const end = parseFloat(priceAt1200);
+    if (isNaN(end)) return;
+
+    const updated = { ...localMatrix };
+    const folds = updated[selectedMaterial].folds;
+
+    updated[selectedMaterial].rates = spanGirthPricesToMax(end, 1200, folds);
+    setLocalMatrix(updated);
+  };
+
+  const handleApplyFolds = () => {
+    const foldVal = parseFloat(foldPrice);
+    if (isNaN(foldVal)) return;
+
+    const updated = { ...localMatrix };
+    const folds = updated[selectedMaterial].folds;
+    const existingRates = updated[selectedMaterial].rates;
+
+    updated[selectedMaterial].rates = applyFoldMultipliers(
+      existingRates,
+      foldVal,
+      [0, ...folds] // ✅ This ensures fold 0 stays intact
+    );
+
+    setLocalMatrix(updated);
+  };
+
   const material = localMatrix[selectedMaterial];
 
   const handlePriceChange = (girth, fold, value) => {
@@ -69,6 +108,23 @@ const PriceEditor = () => {
     setLocalMatrix(updated);
     setSelectedMaterial(newMaterialName);
     setNewMaterialName("");
+  };
+
+  const tooltipStyle = {
+    position: "absolute",
+    left: "1.75rem",
+    top: "-0.15rem",
+    backgroundColor: "#fff",
+    padding: "0.25rem 0.5rem",
+    border: "1px solid #ccc",
+    borderRadius: "0.25rem",
+    whiteSpace: "nowrap",
+    opacity: 0,
+    transform: "translateX(-0.5rem)",
+    transition: "all 0.2s ease-in-out",
+    fontSize: "0.85rem",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+    zIndex: 2,
   };
 
   const materialOptions = Object.keys(localMatrix);
@@ -263,28 +319,9 @@ const PriceEditor = () => {
       {/* Pricing Table Chunked view*/}
       <div
         style={{
-          width: "100%",
-          maxWidth: "100%",
-          overflowX: "hidden",
-          marginTop: "1rem",
-        }}
-      >
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            tableLayout: "fixed", // KEY: enables column auto-shrink
-          }}
-        >
-          {/* thead + tbody */}
-        </table>
-      </div>
-
-      <div
-        style={{
           overflowX: "auto",
-          maxWidth: "100%",
           width: "100%",
+          maxWidth: "100%",
           marginTop: "2rem",
         }}
       >
@@ -292,10 +329,11 @@ const PriceEditor = () => {
           style={{
             width: "100%",
             borderCollapse: "collapse",
-            minWidth: "100%",
+            minWidth: "40rem", // prevent collapse too much
+            tableLayout: "auto", // allow columns to auto-resize
           }}
         >
-          {/* thead + tbody stay as-is */}
+          {/* thead + tbody */}
         </table>
       </div>
 
@@ -308,36 +346,203 @@ const PriceEditor = () => {
           }}
         >
           <thead>
-            <tr>
-              <th style={{ ...thStyle, width: "7rem", minWidth: "7rem" }}>
-                Girth
-              </th>
+            {/* ROW 1: New Custom Top Row */}
+            <tr style={{ backgroundColor: "#eaeaea" }}>
+              <th
+                style={{
+                  ...thStyle,
+                  padding: "1rem",
+                  fontWeight: "500",
+                  fontSize: "0.9rem",
+                  textAlign: "left",
+                }}
+                colSpan={
+                  2 +
+                  [0, ...material.folds].filter(
+                    (_, idx) => !foldChunkedView || idx === 0
+                  ).length
+                }
+              >
+                {/* Girth Gradient Tool */}
+                <span style={{ marginRight: "0.75rem" }}>
+                  Max Girth Price (e.g. 1200mm):
+                </span>
+                <input
+                  type="number"
+                  value={priceAt1200}
+                  onChange={(e) => setPriceAt1200(e.target.value)}
+                  style={{ width: "6rem", marginRight: "1rem" }}
+                />
+                <button
+                  onClick={handleSpanPrices}
+                  style={{
+                    marginRight: "2rem",
+                    backgroundColor: "#007bff",
+                    color: "#fff",
+                    padding: "0.25rem 0.75rem",
+                    border: "none",
+                    borderRadius: "0.25rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  Span
+                </button>
 
-              {material.folds.map((fold) => (
-                <th key={fold} style={thStyle}>
-                  {fold} Fold
-                </th>
-              ))}
-              <th style={{ ...thStyle, textAlign: "right" }} colSpan="2">
-                <label style={{ fontSize: "0.85rem", cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={chunkedView}
-                    onChange={(e) => {
-                      const newValue = e.target.checked;
-                      setChunkedView(newValue);
-                      localStorage.setItem(
-                        "chunkedView",
-                        JSON.stringify(newValue)
-                      );
-                    }}
-                    style={{ marginRight: "0.5rem", cursor: "pointer" }}
-                  />
-                  Chunked View
-                </label>
+                {/* Fold Price Input + Apply */}
+                <span style={{ marginRight: "0.75rem" }}>1 Fold =</span>
+                <input
+                  type="number"
+                  value={foldPrice}
+                  onChange={(e) => setFoldPrice(e.target.value)}
+                  style={{ width: "5rem", marginRight: "1rem" }}
+                />
+                <button
+                  onClick={handleApplyFolds}
+                  style={{
+                    backgroundColor: "#28a745",
+                    color: "#fff",
+                    padding: "0.25rem 0.75rem",
+                    border: "none",
+                    borderRadius: "0.25rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  Apply
+                </button>
               </th>
             </tr>
+
+            {/* ROW 2: Girth | FOLDS (merged) | Checkboxes */}
+            <tr style={{ backgroundColor: "#eaeaea" }}>
+              <th style={{ ...thStyle, width: "7rem", minWidth: "7rem" }}>
+                GIRTH
+              </th>
+
+              <th
+                style={{
+                  ...thStyle,
+                  textAlign: "center",
+                  backgroundColor: "#eaeaea",
+                }}
+                colSpan={
+                  [0, ...material.folds].filter(
+                    (_, idx) => !foldChunkedView || idx === 0
+                  ).length
+                }
+              >
+                FOLDS
+              </th>
+
+              <th
+                style={{
+                  ...thStyle,
+                  width: "2.5rem",
+                  padding: "0",
+                  textAlign: "center",
+                  verticalAlign: "top",
+                }}
+                rowSpan={2}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                  }}
+                >
+                  {/* Girth Chunk Toggle */}
+                  <div
+                    style={{
+                      position: "relative",
+                      width: "1.25rem",
+                      height: "1.25rem",
+                    }}
+                    onMouseEnter={(e) => {
+                      const label =
+                        e.currentTarget.querySelector(".label-slide");
+                      label.style.opacity = "1";
+                      label.style.transform = "translateX(0)";
+                    }}
+                    onMouseLeave={(e) => {
+                      const label =
+                        e.currentTarget.querySelector(".label-slide");
+                      label.style.opacity = "0";
+                      label.style.transform = "translateX(-0.5rem)";
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={chunkedView}
+                      onChange={(e) => {
+                        const newValue = e.target.checked;
+                        setChunkedView(newValue);
+                        localStorage.setItem(
+                          "chunkedView",
+                          JSON.stringify(newValue)
+                        );
+                      }}
+                      style={{ width: "1.25rem", height: "1.25rem", margin: 0 }}
+                    />
+                    <span className="label-slide" style={tooltipStyle}>
+                      Girth 100mm View
+                    </span>
+                  </div>
+
+                  {/* Fold Chunk Toggle */}
+                  <div
+                    style={{
+                      position: "relative",
+                      width: "1.25rem",
+                      height: "1.25rem",
+                    }}
+                    onMouseEnter={(e) => {
+                      const label =
+                        e.currentTarget.querySelector(".label-slide");
+                      label.style.opacity = "1";
+                      label.style.transform = "translateX(0)";
+                    }}
+                    onMouseLeave={(e) => {
+                      const label =
+                        e.currentTarget.querySelector(".label-slide");
+                      label.style.opacity = "0";
+                      label.style.transform = "translateX(-0.5rem)";
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={foldChunkedView}
+                      onChange={(e) => {
+                        const newValue = e.target.checked;
+                        setFoldChunkedView(newValue);
+                        localStorage.setItem(
+                          "foldChunkedView",
+                          JSON.stringify(newValue)
+                        );
+                      }}
+                      style={{ width: "1.25rem", height: "1.25rem", margin: 0 }}
+                    />
+                    <span className="label-slide" style={tooltipStyle}>
+                      Fold Chunked View
+                    </span>
+                  </div>
+                </div>
+              </th>
+            </tr>
+
+            {/* ROW 2: Fold Number Headers */}
+            <tr style={{ backgroundColor: "#eaeaea" }}>
+              <th style={thStyle}></th>
+              {[0, ...material.folds]
+                .filter((_, idx) => !foldChunkedView || idx === 0)
+                .map((fold) => (
+                  <th key={fold} style={thStyle}>
+                    {fold === 0 ? "0" : fold}
+                  </th>
+                ))}
+            </tr>
           </thead>
+
           <tbody>
             {Object.entries(material.rates)
               .filter(([girth]) => {
@@ -350,23 +555,28 @@ const PriceEditor = () => {
                     {girth} mm
                   </td>
 
-                  {material.folds.map((fold) => (
-                    <td key={fold} style={tdStyle}>
-                      <input
-                        type="number"
-                        value={folds[fold] ?? 0}
-                        onChange={(e) =>
-                          handlePriceChange(girth, fold, e.target.value)
-                        }
-                        style={{
-                          width: "6rem",
-                          padding: "0.4rem",
-                          borderRadius: "0.25rem",
-                          border: "1px solid #ccc",
-                        }}
-                      />
-                    </td>
-                  ))}
+                  {[0, ...material.folds]
+                    .filter((_, idx) => !foldChunkedView || idx === 0)
+                    .map((fold) => (
+                      <td key={fold} style={tdStyle}>
+                        <input
+                          type="number"
+                          value={folds[fold] ?? 0}
+                          onChange={(e) =>
+                            handlePriceChange(girth, fold, e.target.value)
+                          }
+                          style={{
+                            width: "100%",
+                            minWidth: "4rem",
+                            maxWidth: "6rem",
+                            padding: "0.4rem",
+                            borderRadius: "0.25rem",
+                            border: "1px solid #ccc",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                      </td>
+                    ))}
                 </tr>
               ))}
           </tbody>

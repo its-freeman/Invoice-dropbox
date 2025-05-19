@@ -34,7 +34,13 @@ const FileJobParser = () => {
 
   return (
     <div style={{ padding: "2rem", maxWidth: "90rem", margin: "0 auto" }}>
-      <h2 style={{ fontSize: "1.5rem", marginBottom: "1rem" }}>
+      <h2
+        style={{
+          fontSize: "1.5rem",
+          textAlign: "center",
+          marginBottom: "1rem",
+        }}
+      >
         Upload Job Card
       </h2>
       <div
